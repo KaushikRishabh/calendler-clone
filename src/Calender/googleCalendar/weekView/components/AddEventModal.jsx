@@ -5,30 +5,18 @@ import * as Yup from "yup";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "../styles.css";
-import { GetAllMemberDetails } from "../../../../../../api/memberSearch";
-import { GetAllHiringLead } from "../../../../../../api/adminDetails";
-import AdminLogout from "../../../../../../Common/AdminLogout";
-import { useNavigate } from "react-router-dom";
-import MultiDropdown from "../../../../../../Common/Multidropdown";
-import DropDown from "../../../../../../Common/dropdown";
+// import { GetAllMemberDetails } from "../../../../../../api/memberSearch";
+// import AdminLogout from "../../../../../../Common/AdminLogout";
+// import { useNavigate } from "react-router-dom";
+// import MultiDropdown from "../../../../../../Common/Multidropdown";
+// import DropDown from "../../../../../../Common/dropdown";
+// import { GetAllHiringLead } from "../../../../../../api/adminDetails";
 import axios from "axios";
 import { HashLoader } from "react-spinners";
-import e from "cors";
+// import { GetAllEvents } from "../../../../../../api/events";
 
-function EditEventModal({
-  show,
-  // eventsForThisSlot,
-  eventData,
-  singleEvent,
-  onUpdate,
-  onDelete,
-  onClose,
-  getEventData,
-}) {
-  // console.log("show ", show);
-  // console.log("eventsForThisSlot", eventsForThisSlot);
-  const firstEvent = singleEvent;
-  // console.log("firstEvent", firstEvent);
+function AddEventModal(props) {
+  // // console.log("props", props);
   const token = localStorage.getItem("adminToken");
   const [loading, setLoading] = useState(false);
   const [shwWrng, setShwWrng] = useState("none");
@@ -37,8 +25,6 @@ function EditEventModal({
   const [sccsHead, setSccsHead] = useState("");
   const [sccsMsg, setSccsMsg] = useState("");
   const [mltHead, setMltHead] = useState("");
-  const [deleteID, setDeleteID] = useState(null);
-  const [shwDlt, setShwDlt] = useState("none");
   const [recruiter, setRecruiter] = useState([]);
   const [adminData, setAdminData] = useState([]);
   const [recruiterPayload, setRecruiterPayload] = useState([]);
@@ -46,44 +32,19 @@ function EditEventModal({
   const [CandidateList, setCandidateList] = useState();
   const [DateStart, setDateStart] = React.useState(null);
   const [DateEnd, setDateEnd] = React.useState(null);
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
   const [startDatePickerValue, setStartDatePickerValue] = useState(null);
   const [endDatePickerValue, setEndDatePickerValue] = useState(null);
   const [recruiterForThisSlot, setRecruiterForThisSlot] = useState([]);
+  const [eventData, setEventData] = useState(props?.eventData ?? []);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
-
-  const originalDateTime = {
-    start: firstEvent?.interview_date,
-    end: firstEvent?.interview_end_date,
-  };
-  // console.log("firstEvent", firstEvent);
-  useEffect(() => {
-    // if (isDataLoaded) {
-    // debugger;
-    // if (startDatePickerValue && endDatePickerValue && isDataLoaded) {
-    // console.log("ueh 4");
-    // debugger;
-    // if (adminData.length > 0) {
-    //   let dataArr = determineBusyRecruiters(adminData);
-    //   setAdminData(adminData);
-    // }
-    getHiringLeadData();
-
-    // } // }
-  }, [startDatePickerValue, endDatePickerValue]);
-  useEffect(() => {
-    // getEventData();
-    getMemberData();
-    // getHiringLeadData();
-
-    // return (cleanUp = () => {});
-  }, []);
+  // Effect to update local state when props change
 
   const formik = useFormik({
     initialValues: {
       title: "",
-      start: firstEvent?.interview_date || null, // || new Date(),
-      end: firstEvent?.interview_end_date || null, // || new Date(),
+      start: props.eventStart || null, // || new Date(),
+      end: props.eventEnd || null, // || new Date(),
       Recruiter: "",
       Candidate: "",
       description: "",
@@ -108,7 +69,9 @@ function EditEventModal({
         .min(1, "Recruiter field is required.")
         .required("Recruiter field is required."),
       Candidate: Yup.string().required("Candidate field is required."),
-      description: Yup.string().required().max(1500, "Description too long!"), // Example validation
+      description: Yup.string()
+        .required("Description is required.")
+        .max(1500, "Description too long!"), // Example validation
       url: Yup.string().matches(
         /^(https?:\/\/)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)$/,
         "Invalid URL format"
@@ -116,11 +79,10 @@ function EditEventModal({
     }),
     onSubmit: (values) => {
       // debugger;
-      console.log("values", values);
+      // // console.log("values", values);
       const formattedStart = formatDateTime(values.start);
       const formattedEnd = formatDateTime(values.end);
 
-      //check if any id of recruiterpaylod is present in recruiterForThisSlot
       let repeatedRecruiter = [];
       for (let i = 0; i < recruiterForThisSlot.length; i++) {
         for (let j = 0; j < recruiterPayload.length; j++) {
@@ -129,103 +91,131 @@ function EditEventModal({
           }
         }
       }
-      console.log("repeated recruiter", repeatedRecruiter);
+      // console.log("repeated recruiter", repeatedRecruiter);
 
       if (repeatedRecruiter.length > 0)
         setMltHead(
           repeatedRecruiter.join(", ") +
             " already have an event scheduled for this slot. Do you want proceed?"
         );
-      else updateEvent(values);
-      // props.onEventAdd(values);
+      else addNewEvent(values);
     },
   });
 
-  let eventsForThisSlot;
   useEffect(() => {
-    eventsForThisSlot = eventData?.filter((event) => {
+    console.log("ueh 2");
+    if (props.eventStart && props.eventEnd) {
       // debugger;
-      // console.log("startDatePickerValue", startDatePickerValue.getTime());
-
-      const eventStart = new Date(event.interview_date).getTime();
-      // console.log("eventStart", eventStart);
-      const eventEnd = new Date(event.interview_end_date).getTime();
-      // debugger;
-
-      //include events when:
-
-      const includedEvents =
-        (eventStart <= startDatePickerValue?.getTime() && // eS: 3 sDP: 1-2
-          eventEnd >= endDatePickerValue?.getTime()) ||
-        (eventStart >= startDatePickerValue?.getTime() &&
-          eventEnd <= endDatePickerValue?.getTime()) ||
-        (eventStart >= startDatePickerValue?.getTime() &&
-          eventStart <= endDatePickerValue?.getTime()) ||
-        (eventEnd >= startDatePickerValue?.getTime() &&
-          eventEnd <= endDatePickerValue?.getTime());
-
-      // debugger;
-      return includedEvents;
-    });
-    // console.log("eventsForThisSlot", eventsForThisSlot);
-
-    // find if any event has recruiter with id in recruiterPayload
-    // const recrForThisSlot = [];
-    // eventsForThisSlot.map((event) => {
-    //   event.recruiters.map((item) => {
-    //     // debugger;
-    //     const recruiterExists = recrForThisSlot.some(
-    //       (recruiter) => recruiter.id === item.id
-    //     );
-    //     if (!recruiterExists) {
-    //       recrForThisSlot.push({ ...item, is_busy: true });
-    //     }
-    //   });
-    // });
-    // setRecruiterForThisSlot(recrForThisSlot);
-    // let tempArr = adminData;
-    // console.log("recrForThisSlot", recrForThisSlot);
-
-    // tempArr = tempArr.map((item) => {
-    //   // debugger;
-    //   item = { ...item, is_busy: false };
-
-    //   return item;
-    // });
-
-    //updating adminData
-
-    // tempArr = tempArr.map((item) => {
-    //   // debugger;
-    //   recrForThisSlot.map((recruiter) => {
-    //     if (item.id === recruiter.id) {
-    //       // debugger;
-    //       item = { ...item, is_busy: recruiter.is_busy };
-    //       console.log("item", item);
-
-    //       return item;
-    //     } else {
-    //       // if (recruiter.id === 772) debugger;
-    //       item = { ...item, is_busy: false };
-
-    //       return item;
-    //     }
-    //   });
-    //   return item;
-    // });
-    // console.log("tempArr", tempArr);
+      // // console.log("start", props.eventStart);
+      // // console.log("end", props.eventEnd);
+      setStartDatePickerValue(props.eventStart);
+      setEndDatePickerValue(props.eventEnd);
+      formik.setFieldValue("start", props.eventStart);
+      formik.setFieldValue("end", props.eventEnd);
+    }
+  }, [props.eventStart, props.eventEnd]);
+  // useEffect(() => {
+  //   console.log("ueh 3");
+  //   // getEventData();
+  // }, [startDatePickerValue, endDatePickerValue]);
+  useEffect(() => {
+    // if (isDataLoaded) {
     // debugger;
+    // if (startDatePickerValue && endDatePickerValue && isDataLoaded) {
+    console.log("ueh 4");
+    // debugger;
+    // if (adminData.length > 0) {
+    //   let dataArr = determineBusyRecruiters(adminData);
+    //   setAdminData(adminData);
+    // }
+    getHiringLeadData();
 
-    // setAdminData(tempArr);
-  }, [startDatePickerValue, endDatePickerValue]);
+    // } // }
+  }, [startDatePickerValue, endDatePickerValue]); //, isDataLoaded]); //, eventData]);
+
+  useEffect(() => {
+    console.log("ueh 1");
+    // getEventData();
+    getMemberData();
+    // getHiringLeadData();
+  }, []); //[props.show]);
+  let eventsForThisSlot;
+  // useEffect(() => {
+  //   eventsForThisSlot = props?.eventData?.filter((event) => {
+  //     const eventStart = new Date(event.interview_date).getTime();
+  //     // // console.log("eventStart", eventStart);
+  //     const eventEnd = new Date(event.interview_end_date).getTime();
+
+  //     const includedEvents =
+  //       (eventStart < startDatePickerValue?.getTime() && // eS: 3 sDP: 1-2
+  //         eventEnd > endDatePickerValue?.getTime()) ||
+  //       (eventStart > startDatePickerValue?.getTime() &&
+  //         eventEnd < endDatePickerValue?.getTime()) ||
+  //       (eventStart > startDatePickerValue?.getTime() &&
+  //         eventStart < endDatePickerValue?.getTime()) ||
+  //       (eventEnd > startDatePickerValue?.getTime() &&
+  //         eventEnd < endDatePickerValue?.getTime());
+
+  //     // debugger;
+  //     return includedEvents;
+  //   });
+  //   // console.log("eventsForThisSlot", eventsForThisSlot);
+
+  //   const recrForThisSlot = [];
+  //   eventsForThisSlot.map((event) => {
+  //     event.recruiters.map((item) => {
+  //       // debugger;
+  //       const recruiterExists = recrForThisSlot.some(
+  //         (recruiter) => recruiter.id === item.id
+  //       );
+  //       if (!recruiterExists) {
+  //         recrForThisSlot.push({ ...item, is_busy: true });
+  //       }
+  //     });
+  //   });
+  //   setRecruiterForThisSlot(recrForThisSlot);
+  //   let tempArr = adminData;
+  //   // console.log("recrForThisSlot", recrForThisSlot);
+
+  //   tempArr = tempArr.map((item) => {
+  //     // debugger;
+
+  //     item = { ...item, is_busy: false };
+
+  //     return item;
+  //   });
+
+  //   //updating adminData
+
+  //   tempArr = tempArr.map((item) => {
+  //     // debugger;
+  //     recrForThisSlot.map((recruiter) => {
+  //       if (item.id === recruiter.id) {
+  //         // debugger;
+  //         item = { ...item, is_busy: recruiter.is_busy };
+  //         // console.log("item", item);
+
+  //         return item;
+  //       } else {
+  //         // if (recruiter.id === 772) debugger;
+  //         item = { ...item, is_busy: false };
+
+  //         return item;
+  //       }
+  //     });
+  //     return item;
+  //   });
+  //   // console.log("tempArr", tempArr);
+  //   // debugger;
+
+  //   setaAdminData(tempArr);
+  // }, [startDatePickerValue, endDatePickerValue, props.eventData]);
   const determineBusyRecruiters = (dataArr) => {
     if (!startDatePickerValue || !endDatePickerValue) return [];
 
     const recrForThisSlot = [];
 
     dataArr.forEach((item) => {
-      // if (item.id === 772 || item.id === 969 || item.id === 797) debugger;
-
       item?.interview_schedule.forEach((schedule) => {
         // if (item?.id === 772) debugger;
         const recruiterIsBusy =
@@ -251,26 +241,10 @@ function EditEventModal({
               endDatePickerValue?.getTime());
         if (recruiterIsBusy) {
           // debugger;
-          // const selectedEvent = eventsForThisSlot.find(
-          //   (event) => event.id === firstEvent.id
-          // );
-          // if (selectedEvent.id !== firstEvent.id) {
-          //   // debugger;
-          //   recrForThisSlot.push({ ...item, is_busy: true });
-          // } else {
-          //code to push unique recruiter only
-          if (!recrForThisSlot.some((recruiter) => recruiter.id === item.id)) {
-            recrForThisSlot.push({ ...item, is_busy: true });
-          }
-
-          // recrForThisSlot.push({ ...item, is_busy: true });
-          // }
+          recrForThisSlot.push({ ...item, is_busy: true });
         }
       });
     });
-
-    console.log("recrForThisSlot", recrForThisSlot);
-    console.log("eventsForThisSlot", eventsForThisSlot);
 
     let tempArr = dataArr.map((item) => {
       // if (item.id === 772) debugger;
@@ -279,7 +253,7 @@ function EditEventModal({
       );
       return { ...item, is_busy: isBusy };
     });
-    // console.log("admin data tempArr", tempArr);
+    console.log("admin data tempArr", tempArr);
     setRecruiterForThisSlot(recrForThisSlot);
     // debugger;
     // setAdminData(tempArr);
@@ -296,80 +270,111 @@ function EditEventModal({
         return selectedRec;
       });
       // debugger;
-      console.log("setting rec 1", tempRecArr);
+
       setRecruiter(tempRecArr);
     }
     return tempArr;
   };
 
-  // useEffect(() => {
-  //   // console.log("adminDATAA", adminData);
-  //   if (adminData.length > 0) determineBusyRecruiters();
-  // }, [startDatePickerValue, endDatePickerValue, eventData]);
-
-  // useEffect(() => {
-  //   let tempRecArr = [];
-  //   if (recruiter.length > 0) {
-  //     tempRecArr = recruiter.map((selectedRec) => {
-  //       adminData.map((item) => {
-  //         if (selectedRec?.id === item?.id) {
-  //           // handleMultiDropdown(item);
-  //           selectedRec.is_busy = item?.is_busy;
-  //         }
-  //       });
-  //       return selectedRec;
-  //       // if (selectedRec.id === item.id) handleMultiDropdown(item);
-  //     });
-  //     // debugger;
-  //     setRecruiter(tempRecArr);
-  //   }
-  //   // console.log("recruiter", tempRecArr);
-  // }, [adminData]);
   useEffect(() => {
-    // if (adminData.length > 0) {
-    // Pre-populate the form fields with the existing event data
-    if (!isDataLoaded) {
-      let rctrId = firstEvent?.recruiters.map((item) => {
-        return item.id;
-      });
-      let rctrArr = firstEvent?.recruiters;
-      // debugger;
-      if (eventsForThisSlot) {
-        formik.setValues({
-          title: firstEvent?.interview_title,
-          start: firstEvent?.interview_date,
-          end: firstEvent?.interview_end_date,
+    // console.log("admin datta", adminData);
+    console.log("adminData", adminData);
+  }, [adminData]);
 
-          description: firstEvent?.interview_description,
-          url: firstEvent?.interview_url,
-          Recruiter: rctrId,
-          Candidate: firstEvent?.candidate_info?.id,
-        });
+  let times = 0;
+  // useEffect(() => {
+  //   if (adminData.length > 0) {
+  //     console.log("ueh 5");
+  //     // console.log("adminData changed" + times, adminData);
+  //     times++;
+  //     let tempRecArr = [];
+  //     if (recruiter.length > 0) {
+  //       tempRecArr = recruiter.map((selectedRec) => {
+  //         adminData.map((item) => {
+  //           if (selectedRec?.id === item?.id) {
+  //             // handleMultiDropdown(item);
+  //             selectedRec.is_busy = item?.is_busy;
+  //           }
+  //         });
+  //         return selectedRec;
+  //       });
+  //       // debugger;
+
+  //       setRecruiter(tempRecArr);
+  //     }
+  //     // console.log("recruiter", recruiter);
+  //   }
+  // }, [adminData]);
+  // useEffect(() => {
+  //   // console.log("recruiter", recruiter);
+  // }, [recruiter]);
+  const getEventData = async () => {
+    // debugger;
+    const formattedStart = formatDateTime(startDatePickerValue);
+    const formattedEnd = formatDateTime(endDatePickerValue);
+    // const url = `/interviewer/details/?start_datetime=2023-10-06T12:10:52Z&end_datetime=2023-10-11T12:10:52Z`;
+    const url = `/interviewer/details/?start_datetime=${formattedStart}&end_datetime=${formattedEnd}`;
+    const response = await GetAllEvents(url, token);
+    const result = response?.data;
+    if (response.success) {
+      // // console.log("event data", result);
+      let modifiedResponse = modifyDates(result);
+      // // console.log("modifiedResponse", modifiedResponse);
+      // setEventData(result?.data);
+      // const filteredResponse = modifiedResponse.data.filter((interview) => {
+      //   return interview.recruiters.some(
+      //     (recruiter) => recruiter.id === adminID
+      //   );
+      // });
+
+      // modifiedResponse.data =
+      //   adminEmail === "admin@gmail.com"
+      //     ? modifiedResponse.data
+      //     : filteredResponse;
+
+      // // console.log("modifiedResponse", modifiedResponse);
+      setEventData(modifiedResponse?.data);
+      // const temp = result.data.map((item) => {
+      // return {
+      // id: item.applicantjobapply_id,
+      // name: item.full_name,
+      // };
+      // });
+      // setCandidateList(temp);
+    } else {
+      const error = response?.message;
+      // console.log("error -->", error);
+      setLoading(false);
+      if (error?.response?.data?.status === "401") {
+        // setErrMssg("Session expired, please login again");
+        // handleErrAlert();
       }
-      // debugger;
-      setRecruiterPayload(rctrId);
-      console.log("setting rec 2", rctrArr);
-      setRecruiter(rctrArr);
-      setCandidateDropdown(
-        firstEvent?.candidate_info?.name +
-          " - " +
-          firstEvent?.job_info?.posting_title
-      );
-      // formik.setFieldValue("Recruiter", rctrId);
-      setStartDatePickerValue(firstEvent?.interview_date);
-      setEndDatePickerValue(firstEvent?.interview_end_date);
-      setIsDataLoaded(true);
     }
-    // setIsDataLoaded(true);
-    // }
-  }, [eventsForThisSlot, adminData]);
-
+  };
+  //util functions - used in multiple components - need to refactor
+  function modifyDates(response) {
+    return {
+      ...response,
+      data: response.data.map((item) => ({
+        ...item,
+        interview_date: adjustToUserTimezone(item.interview_date),
+        interview_end_date: adjustToUserTimezone(item.interview_end_date),
+      })),
+    };
+  }
+  function adjustToUserTimezone(isoDate) {
+    const date = new Date(isoDate);
+    const userTimezoneDate = new Date(date.toLocaleString());
+    const timezoneOffset =
+      date.getTimezoneOffset() - userTimezoneDate.getTimezoneOffset();
+    return new Date(userTimezoneDate.getTime() - timezoneOffset * 60 * 1000);
+  }
   const getMemberData = async () => {
     const url = `/get/all/member/detail/?is_event=true`;
     const response = await GetAllMemberDetails(url, token);
     const result = response?.data;
     if (response.success) {
-      // console.log("cand result", result);
+      // // console.log("cand result", result);
       const temp = result.data.map((item) => {
         return {
           id: item.applicantjobapply_id,
@@ -379,7 +384,7 @@ function EditEventModal({
       setCandidateList(temp);
     } else {
       const error = response?.message;
-      console.log("error -->", error);
+      // console.log("error -->", error);
       setLoading(false);
       if (error?.response?.data?.status === "401") {
         setErrMssg("Session expired, please login again");
@@ -393,40 +398,39 @@ function EditEventModal({
     // if (adminData.length > 0) {
     //   return;
     // }
-    const url = `/view/all/hiring/lead/detail/`;
-    const response = await GetAllHiringLead(url, token);
-    const result = response?.data;
-    if (response.success) {
-      // // console.log("result", result);
-      let temp = result.data.map((item) => {
-        return {
-          id: item.id,
-          name: item.full_name,
-          is_busy: false,
-          interview_schedule: item.interview_schedule,
-        };
-      });
-      temp = determineBusyRecruiters(temp);
-
-      // debugger;
-      // console.log("adminData from hiring lead api", temp);
-      // if (!isDataLoaded)
-      // debugger;
-      if (temp.length > 0) {
-        // console.log("temp admin", temp);
-        setAdminData(temp);
-      }
-      // console.log("getHiringLeadData");
-      // setIsDataLoaded(true);
-    } else {
-      const error = response?.message;
-      // console.log("error -->", error);
-      setLoading(false);
-      if (error?.response?.data?.status === "401") {
-        setErrMssg("Session expired, please login again");
-        handleErrAlert();
-      }
-    }
+    // const url = `/view/all/hiring/lead/detail/`;
+    // const response = await GetAllHiringLead(url, token);
+    // const result = response?.data;
+    // if (response.success) {
+    //   // // console.log("result", result);
+    //   let temp = result.data.map((item) => {
+    //     return {
+    //       id: item.id,
+    //       name: item.full_name,
+    //       is_busy: false,
+    //       interview_schedule: item.interview_schedule,
+    //     };
+    //   });
+    //   temp = determineBusyRecruiters(temp);
+    //   // debugger;
+    //   // console.log("adminData from hiring lead api", temp);
+    //   // if (!isDataLoaded)
+    //   // debugger;
+    //   if (temp.length > 0) {
+    //     console.log("temp admin", temp);
+    //     setAdminData(temp);
+    //   }
+    //   console.log("getHiringLeadData");
+    //   // setIsDataLoaded(true);
+    // } else {
+    //   const error = response?.message;
+    //   // console.log("error -->", error);
+    //   setLoading(false);
+    //   if (error?.response?.data?.status === "401") {
+    //     setErrMssg("Session expired, please login again");
+    //     handleErrAlert();
+    //   }
+    // }
   };
 
   const handleErrAlert = () => {
@@ -435,63 +439,23 @@ function EditEventModal({
   };
   const handleShwSccs = () => {
     document.body.style.overflow = "auto";
-    navigate("/Admin/Calendar");
+    // navigate("/Admin/Calendar");
     setShwSccs("none");
-    formik.resetForm();
     handleModalClose();
-    getEventData();
+    // formik.resetForm();
+    props.onHide();
   };
   const handleShwWrng = () => {
     document.body.style.overflow = "auto";
     setShwWrng("none");
     // AdminLogout(navigate);
   };
-  const handleDelete = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    // debugger;
-    setShwDlt("block");
-    setErrMssg("You will not be able to recover this event!");
-    setDeleteID(firstEvent?.id);
-  };
-  const handleCfmDlt = async () => {
-    let result;
-    setShwDlt("none");
-    setLoading(true);
-    try {
-      const response = await axios({
-        headers: { Authorization: `Bearer ${token}` },
-        method: "delete",
-        url: `/cancel/interview/${deleteID}/`,
-      });
-      result = response;
-    } catch (error) {
-      setLoading(false);
-      console.log("error -->", error);
-    }
-    if (result?.status === 200) {
-      setLoading(false);
-      setSccsMsg("Event deleted successfully !");
 
-      setShwSccs("block");
-      setSccsHead("Success !");
-    }
-  };
-  const cancelDlt = () => {
-    document.body.style.overflow = "auto";
-    setShwDlt("none");
-  };
-
-  const updateEvent = async (values) => {
-    setLoading(true);
+  const addNewEvent = async (values) => {
     // debugger;
+    setLoading(true);
     //Api call to post template data
-    // Check if the start or end date-time has changed
-    const isRescheduled =
-      values?.start !== originalDateTime.start ||
-      values?.end !== originalDateTime.end;
-    // console.log("isRescheduled", isRescheduled);
-    // return;
+
     const formattedStart = formatDateTime(values.start);
     const formattedEnd = formatDateTime(values.end);
     const formData = new FormData();
@@ -502,20 +466,20 @@ function EditEventModal({
     formData.append("interview_url", values.url);
     formData.append("interview_description", values.description);
     formData.append("interviewer", values.Recruiter);
-    formData.append("is_rescheduled", isRescheduled);
+    // formData.append("is_rescheduled", false);
 
     let result;
     try {
       const response = await axios({
         headers: { Authorization: `Bearer ${token}` },
-        method: "put",
-        url: `/interview/reschedule/${firstEvent?.id}/`,
+        method: "post",
+        url: `/interview/schedule/`, // `/interview/reschedule/${values?.Candidate}/`,
         data: formData,
       });
       result = response;
     } catch (error) {
       setLoading(false);
-      console.log("Add Template error--->", error);
+      // console.log("Add Template error--->", error);
 
       setLoading(false);
       if (error?.response?.data?.status === "401") {
@@ -523,15 +487,16 @@ function EditEventModal({
         handleErrAlert();
       }
       handleErrAlert();
-      setErrMssg(error.response.data.email[0]);
+      setErrMssg(error.response.data.error);
     }
     if (result && (result.status === 201 || 200)) {
       setLoading(false);
       setShwSccs("block");
       setSccsHead("Success !");
-      setSccsMsg("Event updated successfully !");
+      setSccsMsg("Event added successfully !");
     }
   };
+
   const setDate = (type, setter, date) => {
     setter(date);
     formik.setFieldValue(type, date);
@@ -583,7 +548,7 @@ function EditEventModal({
   }
 
   const handleCandidateSelect = (obj) => {
-    console.log("obj", obj);
+    // debugger;
     if (obj) {
       formik.setFieldValue("Candidate", obj?.id);
       setCandidateDropdown(obj?.name);
@@ -594,6 +559,7 @@ function EditEventModal({
   };
 
   const handleMultiDropdown = (val) => {
+    // console.log("admin dataa", adminData);
     // debugger;
     let rctrArr = [...recruiter];
     let rctrId = [...recruiterPayload];
@@ -605,8 +571,15 @@ function EditEventModal({
 
     if (!recruiterExists) {
       rctrArr.push(val);
+    } else {
+      if (rctrArr.length > 0)
+        rctrArr = rctrArr.map((item) => {
+          if (item.id === val.id) {
+            item = { ...item, is_busy: val.is_busy };
+          }
+          return item;
+        });
     }
-    console.log("setting rec 3", rctrArr);
     setRecruiter(rctrArr);
 
     if (!rctrId.includes(val?.id)) {
@@ -627,11 +600,12 @@ function EditEventModal({
       arr2a.splice(index, 1);
       arr2b.splice(index, 1);
     }
-    console.log("setting rec 4", arr2a);
+
     setRecruiter(arr2a);
     setRecruiterPayload(arr2b);
     formik.setFieldValue("Recruiter", arr2b);
   };
+
   const handleModalClose = () => {
     // Reset Formik form
     formik.resetForm();
@@ -640,9 +614,13 @@ function EditEventModal({
     setStartDatePickerValue(null);
     setEndDatePickerValue(null);
     setCandidateDropdown("");
+    setRecruiterForThisSlot([]);
+
+    // setaAdminData([]);
     // setCandidateList();
     setRecruiter([]);
     setRecruiterPayload([]);
+
     let tempArr = adminData;
     tempArr = tempArr.map((item) => {
       // debugger;
@@ -651,23 +629,23 @@ function EditEventModal({
 
       return item;
     });
-    // console.log("tempArr on Close", tempArr);
-    setAdminData(tempArr);
+    // // console.log("tempArr on Close", tempArr);
+    // setaAdminData(tempArr);
 
-    // Call the handleModalClose prop to close the modal
-    onClose();
+    // Call the onHide prop to close the modal
+    props.onHide();
   };
 
   const handleShwMultiple = async () => {
     // navigate("/Admin/Calendar");
 
     setMltHead("");
-    updateEvent(formik.values);
+    addNewEvent(formik.values);
   };
 
   return (
     <Modal
-      show={show}
+      show={props.show}
       onHide={handleModalClose}
       className="modal-cal"
       // size="xl"
@@ -675,7 +653,7 @@ function EditEventModal({
       // style={{ minWidth: "500px !important" }}
     >
       <Modal.Header closeButton>
-        <Modal.Title>Update Event</Modal.Title>
+        <Modal.Title>Create Event</Modal.Title>
       </Modal.Header>
       <Modal.Body>
         <form onSubmit={formik.handleSubmit}>
@@ -750,6 +728,7 @@ function EditEventModal({
                 selected={startDatePickerValue}
                 // onChange={(date) => setDate("start", setDateStart, date)}
                 onChange={(date) => {
+                  // // console.log("date", date);
                   setStartDatePickerValue(date);
                   formik.setFieldValue("start", date);
                 }}
@@ -764,7 +743,9 @@ function EditEventModal({
                 <div className="text-danger">{formik.errors.start}</div>
               ) : null}
             </Form.Group>
-
+            {/* </div> */}
+            {/* <div className="mb-3">
+            <label className="form-label">End</label> */}
             <Form.Group as={Col} className="py-2" md={6}>
               <Form.Label>
                 End (UTC):
@@ -793,33 +774,39 @@ function EditEventModal({
               ) : null}
             </Form.Group>
           </Row>
+          {/* </div> */}
+          {/* <div className="mb-3">
+            <label className="form-label">Recruiters</label>
 
+            <span className="text-danger">*</span> */}
           <Row className="pb-2">
-            <Form.Group as={Col} className="py-2" md={6}>
-              <Form.Label>
-                Recruiter/Hiring Lead:
-                <span className="text-danger">*</span>
-              </Form.Label>
+            {adminData && (
+              <Form.Group as={Col} className="py-2" md={6}>
+                <Form.Label>
+                  Recruiter/Hiring Lead:
+                  <span className="text-danger">*</span>
+                </Form.Label>
 
-              <MultiDropdown
-                handleRemove={handleRemove}
-                fn={handleMultiDropdown}
-                value={recruiter}
-                arrayList={adminData}
-                name="HRS"
-                fieldName="HRS"
-              />
-              <input
-                type="hidden"
-                name="Campus"
-                {...formik.getFieldProps("Recruiter")}
-              />
-              {formik.touched.Recruiter && formik.errors.Recruiter ? (
-                <span className="text-start w-100 my-2 ps-2 text-danger">
-                  {formik.errors.Recruiter}
-                </span>
-              ) : null}
-            </Form.Group>
+                {/* <MultiDropdown
+                  handleRemove={handleRemove}
+                  fn={handleMultiDropdown}
+                  value={recruiter}
+                  arrayList={adminData}
+                  name="HRS"
+                  fieldName="HRS"
+                /> */}
+                <input
+                  type="hidden"
+                  name="Campus"
+                  {...formik.getFieldProps("Recruiter")}
+                />
+                {formik.touched.Recruiter && formik.errors.Recruiter ? (
+                  <span className="text-start w-100 my-2 ps-2 text-danger">
+                    {formik.errors.Recruiter}
+                  </span>
+                ) : null}
+              </Form.Group>
+            )}
 
             <Form.Group as={Col} className="py-2" md={6}>
               <Form.Label>
@@ -827,16 +814,17 @@ function EditEventModal({
                 <span className="text-danger">*</span>
               </Form.Label>
 
+              {/* <DropDown
+                fieldName="Candidate"
+                fn={handleCandidateSelect}
+                selectedValue={CandidateDropdown}
+                arrayList={CandidateList}
+                name="--Select--"
+              /> */}
               <input
-                id="Candidate"
+                type="hidden"
                 name="Candidate"
-                type="text"
-                className="form-control"
-                value={CandidateDropdown}
-                disabled={true}
-                // onChange={formik.handleChange}
-                // onBlur={formik.handleBlur}
-                // value={formik.values.title}
+                {...formik.getFieldProps("Candidate")}
               />
               {formik.touched.Candidate && formik.errors.Candidate ? (
                 <span className="text-start w-100 my-2 ps-2 text-danger">
@@ -845,20 +833,20 @@ function EditEventModal({
               ) : null}
             </Form.Group>
           </Row>
-
+          {/* </div> */}
           <button
-            title="Remove Event"
+            title="Close"
             className="btn btn-dark mx-2"
             style={{
               backgroundColor: "#5a5c69",
               borderColor: "#5a5c69",
             }}
-            onClick={handleDelete}
+            onClick={handleModalClose}
           >
-            Remove Event
+            Close
           </button>
           <button
-            title="Update Event"
+            title="Create Event"
             className="btn btn-dark"
             style={{
               background: "linear-gradient(180deg,#ff4438 0%,#ff4438 100%)",
@@ -866,7 +854,7 @@ function EditEventModal({
             }}
             type="submit"
           >
-            Update Event
+            Create Event
           </button>
         </form>
       </Modal.Body>
@@ -906,38 +894,6 @@ function EditEventModal({
           </Button>
         </div>
       </div>
-      <div className="sweet-overlay" style={{ display: shwDlt }}>
-        <div className="sweet-alert">
-          <div className="err-icon">
-            <span className="err-body pulseWarningIns"></span>
-            <span className="err-dot pulseWarningIns"></span>
-          </div>
-          <h2>Are you sure?</h2>
-          <p style={{ display: "block" }}>{errMssg}</p>
-          <button
-            className="btn btn-dark mx-2"
-            style={{
-              marginTop: "10px",
-              backgroundColor: "#5a5c69",
-              borderColor: "#5a5c69",
-            }}
-            onClick={() => cancelDlt()}
-          >
-            Cancel
-          </button>
-          <button
-            className="btn btn-dark"
-            style={{
-              marginTop: "10px",
-              background: "linear-gradient(180deg,#ff4438 0%,#ff4438 100%)",
-              border: "1px solid transparent",
-            }}
-            onClick={() => handleCfmDlt()}
-          >
-            Yes, delete it !
-          </button>
-        </div>
-      </div>
       <div
         className="sweet-overlay"
         style={{ display: mltHead ? "block" : "none" }}
@@ -972,4 +928,4 @@ function EditEventModal({
   );
 }
 
-export default EditEventModal;
+export default AddEventModal;

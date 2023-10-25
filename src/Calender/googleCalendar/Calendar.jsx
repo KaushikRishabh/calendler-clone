@@ -3,7 +3,11 @@ import WeekView from "./weekView/WeekView";
 import CalendarEventHandler from "./calendarEventHandler";
 import dummyData2 from "./dummyData";
 import { Card, Col, Nav, Row } from "react-bootstrap";
-import { useNavigate, Link, NavLink } from "react-router-dom";
+import {
+  // useNavigate
+  Link,
+  NavLink,
+} from "react-router-dom";
 
 function Calendar() {
   // const [events, setEvents] = useState(
@@ -11,13 +15,13 @@ function Calendar() {
   // );
   const [events, setEvents] = useState(dummyData2);
   const token = localStorage.getItem("adminToken");
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
 
   useEffect(() => {
     // debugger;
     const adminToken = localStorage.getItem("adminToken");
     if (!adminToken) {
-      navigate("/Admin/Account");
+      // navigate("/Admin/Account");
     }
   }, []);
   // useEffect(() => {

@@ -5,12 +5,17 @@ import WeekHeader from "./components/WeekHeader";
 import TimeSlotGroup from "./components/TimeSlotGroup";
 import "./styles.css";
 import { Card, Col, Button, Nav, Row } from "react-bootstrap";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import {
+  Link,
+  NavLink,
+  //  useNavigate
+} from "react-router-dom";
 import { useEffect } from "react";
-import { GetAllEvents } from "../../../../../api/events";
+// import { GetAllEvents } from "../../../../../api/events";
 import { AiOutlineLeft, AiOutlineRight } from "react-icons/ai";
-import { useBoundStore } from "../../../../../store/useBoundStore";
+// import { useBoundStore } from "../../../../../store/useBoundStore";
 import { HashLoader } from "react-spinners";
+import { GetAllEvents } from "../../../api/events";
 // import AdminLogout from "../../../../../Common/AdminLogout";
 
 function WeekView(props) {
@@ -22,11 +27,11 @@ function WeekView(props) {
   const [eventEnd, setEventEnd] = useState(null);
   const [eventData, setEventData] = useState([]);
   const [eventsForThisSlot, setEventsForThisSlot] = useState([]);
-  const adminID = useBoundStore((state) => state.adminID);
-  const adminEmail = useBoundStore((state) => state.emailId);
+  // const adminID = useBoundStore((state) => state.adminID);
+  // const adminEmail = useBoundStore((state) => state.emailId);
   const [shwWrng, setShwWrng] = useState("none");
   const [errMssg, setErrMssg] = useState("");
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
   // console.log("adminEmail", adminEmail);
 
   useEffect(() => {
@@ -54,16 +59,18 @@ function WeekView(props) {
       let modifiedResponse = modifyDates(result);
       // console.log("modifiedResponse", modifiedResponse);
       // setEventData(result?.data);
-      const filteredResponse = modifiedResponse.data.filter((interview) => {
-        return interview.recruiters.some(
-          (recruiter) => recruiter.id === adminID
-        );
-      });
+      const filteredResponse = modifiedResponse.data;
+      // .filter((interview) => {
+      //   return interview.recruiters.some(
+      //     (recruiter) => recruiter.id === adminID
+      //   );
+      // });
 
       modifiedResponse.data =
-        adminEmail === "admin@gmail.com"
-          ? modifiedResponse.data
-          : filteredResponse;
+        // adminEmail === "admin@gmail.com"
+        // ? modifiedResponse.data
+        // :
+        filteredResponse;
 
       console.log("modifiedResponse", modifiedResponse);
       setEventData(modifiedResponse?.data);

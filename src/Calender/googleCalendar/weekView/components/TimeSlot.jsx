@@ -3,9 +3,8 @@ import { Col } from "react-bootstrap";
 import { isToday } from "../../utils";
 import EventHighlighter from "./EventHighlighter";
 import dummyData2 from "../../dummyData";
-import { GetAllEvents } from "../../../../../../api/events";
-import { useBoundStore } from "../../../../../../store/useBoundStore";
-// import { GetAllEvents } from "../../../../../../api/events,js";
+// import { GetAllEvents } from "../../../../../../api/events";
+// import { useBoundStore } from "../../../../../../store/useBoundStore";
 
 function TimeSlot(props) {
   const isTodayColumn = isToday(props.dateStamp);
